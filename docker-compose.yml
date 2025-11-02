@@ -1,0 +1,15 @@
+version: '3'
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    command: >
+      zap-baseline.py -t http://app:8000 -J /zap/wrk/zap-report.json -I
+    depends_on:
+      - app
+    volumes:
+      - ./zap-reports:/zap/wrk
+``

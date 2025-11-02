@@ -68,9 +68,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Compose
-        run: docker compose version
-
       - name: Create zap-reports directory
         run: mkdir -p zap-reports
 
@@ -78,6 +75,9 @@ jobs:
         run: |
           docker compose up --abort-on-container-exit
           docker compose down
+
+      - name: Set up Docker Compose
+        run: docker compose version
 
       - name: ZAP Quick Summary
         if: always()

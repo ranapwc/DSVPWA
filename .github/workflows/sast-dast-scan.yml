@@ -103,6 +103,19 @@ jobs:
             echo "No ZAP report found."
           fi
 
+      - name: ZAP Markdown Summary in Actions
+        if: always()
+        run: |
+          echo "## 🕷️ OWASP ZAP DAST Scan Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f zap-results/zap-report.json ]; then
+            echo '| Risk | Alert | URL | Description |' >> $GITHUB_STEP_SUMMARY
+            echo '|------|-------|-----|-------------|' >> $GITHUB_STEP_SUMMARY
+            jq -r '.site[0].alerts[] | 
+              "| \(.riskdesc) | \(.alert) | \(.instances[0].uri // \"N/A\") | \(.desc // \"N/A\") |"' zap-results/zap-report.json >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No ZAP report found." >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
         if: always()

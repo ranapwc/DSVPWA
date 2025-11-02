@@ -4,11 +4,18 @@ services:
     build: .
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   zap:
     image: ghcr.io/zaproxy/zaproxy:stable
     command: >
-      zap-baseline.py -t http://app:8000 -J /zap/wrk/zap-report.json -I
+      sh -c "sleep 20 && zap-baseline.py -t http://app:8000 -J /zap/wrk/zap-report.json -I"
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     volumes:
       - ./zap-reports:/zap/wrk

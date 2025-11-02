@@ -44,7 +44,7 @@ jobs:
             echo '| File | Line | Severity | Test ID | Issue Description |' >> $GITHUB_STEP_SUMMARY
             echo '|------|------|----------|---------|--------------------|' >> $GITHUB_STEP_SUMMARY
             jq -r '.results[] | 
-              "| \(.filename) | \(.line_number) | \(.issue_severity) \((.issue_severity=="HIGH")?"🔴":(.issue_severity=="MEDIUM")?"🟠":(.issue_severity=="LOW")?"🟡":"🔵") | \(.test_id) | \(.issue_text) |"' bandit-report.json >> $GITHUB_STEP_SUMMARY
+              "| \(.filename) | \(.line_number) | \(.issue_severity) | \(.test_id) | \(.issue_text) |"' bandit-report.json >> $GITHUB_STEP_SUMMARY
           else
             echo "No Bandit report found." >> $GITHUB_STEP_SUMMARY
           fi

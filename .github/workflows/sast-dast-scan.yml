@@ -59,64 +59,57 @@ jobs:
           name: bandit-findings
           path: bandit-report.json
 
- 
+
   dast_scan:
+    name: OWASP ZAP DAST Scan
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build DSVPWA Docker image
-        run: docker build -t dsvpwa .
-
-      - name: Run DSVPWA app container
+      - name: Build and run DSVPWA container
         run: |
-          docker run -d --name dsvpwa-app -p 65413:65413 dsvpwa
-          sleep 10
+          docker build -t dsvpwa .
+          docker run -d -p 65413:65413 --name dsvpwa dsvpwa
+          sleep 15 # Wait for the app to start
+
+      - name: Prepare report directory
+        run: |
+          mkdir -p zap-results
+          chmod 777 zap-results
 
       - name: Run OWASP ZAP Baseline Scan
         run: |
-             docker run --rm \
-              --network host \
-              -v ${{ github.workspace }}:/zap/wrk \
-              ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
-              -t http://localhost:65413 \
-              -J /zap/wrk/zap-report.json \
-              -I || true
-   
+          docker run --network host \
+            -v $(pwd)/zap-results:/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://localhost:65413 \
+            -J zap-report.json \
+            -x zap-report.xml \
+            -w zap-report.md \
+            -r zap-report.html \
+            -I || true
+
+      - name: ZAP Quick Summary
+        if: always()
+        run: |
+          echo "🔍 OWASP ZAP Summary:"
+          if [ -f zap-results/zap-report.json ]; then
+            alerts=$(jq '.site[0].alerts | length' zap-results/zap-report.json)
+            echo "Total Alerts Found: $alerts"
+            jq -r '.site[0].alerts[] | "\(.riskdesc): \(.alert)"' zap-results/zap-report.json | head -n 5
+          else
+            echo "No ZAP report found."
+          fi
 
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: zap-report
-          path: zap-report.json
-
-      - name: Stop and remove DSVPWA app container
-        if: always()
-        run: docker rm -f dsvpwa-app || true
-
-  zap__public_url_scan:
-    runs-on: ubuntu-latest
-    name: Scan Juice Shop preview instance on Heroku
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-        with:
-          ref: main
-      - name: ZAP Scan
-        uses: zaproxy/action-api-scan@v0.10.0 # v0.14.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          target: 'https://preview.owasp-juice.shop'
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a -j'
-      
-      - name: Upload ZAP Scan Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-scan-results
-          
           path: |
-            report_html.html
-            report_json.json
-            report_md.md
+            zap-results/zap-report.json
+            zap-results/zap-report.html
+            zap-results/zap-report.md
+            zap-results/zap-report.xml

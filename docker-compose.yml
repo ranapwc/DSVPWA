@@ -3,9 +3,9 @@ services:
   app:
     build: .
     ports:
-      - "8000:8000"
+      - "65413:65413"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      test: ["CMD", "curl", "-f", "http://localhost:65413"]
       interval: 10s
       timeout: 5s
       retries: 5

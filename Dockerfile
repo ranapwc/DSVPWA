@@ -17,6 +17,6 @@ WORKDIR /usr/src/app
 
 COPY . .
 
-EXPOSE 65413
+EXPOSE 8000
 
-CMD [ "python", "./dsvpwa.py" , "--host", "0.0.0.0" ]
+CMD [ "python", "./dsvpwa.py", "--host", "0.0.0.0", "--port", "8000" ]

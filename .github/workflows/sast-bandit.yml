@@ -44,10 +44,11 @@ jobs:
             echo '| File | Line | Severity | Test ID | Issue Description |' >> $GITHUB_STEP_SUMMARY
             echo '|------|------|----------|---------|--------------------|' >> $GITHUB_STEP_SUMMARY
             jq -r '.results[] | 
-              "| \(.filename) | \(.line_number) | <span style=\"color:white;background-color:\(if .issue_severity == \"HIGH\" then \"red\" elif .issue_severity == \"MEDIUM\" then \"orange\" elif .issue_severity == \"LOW\" then \"gold\" else \"blue\" end);padding:2px 6px;border-radius:4px\">\(.issue_severity)</span> | \(.test_id) | \(.issue_text) |"' bandit-report.json >> $GITHUB_STEP_SUMMARY
+              "| \(.filename) | \(.line_number) | \(.issue_severity) \((.issue_severity=="HIGH")?"🔴":(.issue_severity=="MEDIUM")?"🟠":(.issue_severity=="LOW")?"🟡":"🔵") | \(.test_id) | \(.issue_text) |"' bandit-report.json >> $GITHUB_STEP_SUMMARY
           else
             echo "No Bandit report found." >> $GITHUB_STEP_SUMMARY
           fi
+``
 
       - name: Upload Bandit Report
         uses: actions/upload-artifact@v4

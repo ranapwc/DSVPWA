@@ -1,4 +1,4 @@
-name: SAST Scan with Bandit
+name: SAST and DAST Scans
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  bandit-scan:
+  sast-scan:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -56,3 +56,46 @@ jobs:
         with:
           name: bandit-findings
           path: bandit-report.json
+
+
+
+  dast_scan:
+    name: OWASP ZAP DAST Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and run app container
+        run: |
+          docker build -t myapp:latest .
+          docker run -d -p 8000:8000 --name myapp myapp:latest
+          sleep 10
+
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
+          docker run --network host -v $(pwd):/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://localhost:8000 \
+            -J zap-report.json \
+            -I || true
+
+      - name: ZAP Quick Summary
+        if: always()
+        run: |
+          echo "## 🕷️ OWASP ZAP Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f zap-report.json ]; then
+            alerts=$(jq '.site[0].alerts | length' zap-report.json)
+            echo "Total Alerts Found: $alerts" >> $GITHUB_STEP_SUMMARY
+            echo '| Risk | Alert |' >> $GITHUB_STEP_SUMMARY
+            echo '|------|-------|' >> $GITHUB_STEP_SUMMARY
+            jq -r '.site[0].alerts[] | "| \(.riskdesc) | \(.alert) |"' zap-report.json | head -n 5 >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No ZAP report found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-report
+          path: zap-report.json

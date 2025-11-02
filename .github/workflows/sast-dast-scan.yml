@@ -102,7 +102,7 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: main
       - name: ZAP Scan
         uses: zaproxy/action-api-scan@v0.10.0 # v0.14.0
         with:

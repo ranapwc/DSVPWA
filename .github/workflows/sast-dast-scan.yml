@@ -60,28 +60,24 @@ jobs:
           path: bandit-report.json
 
 
-  dast_scan:
+ 
+ dast_scan:
     name: OWASP ZAP DAST Scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build and run app container
-        run: |
-          docker build -t myapp:latest .
-          docker run -d -p 8000:8000 --name myapp myapp:latest
-          sleep 10
+      - name: Set up Docker Compose
+        run: docker compose version
 
       - name: Create zap-reports directory
         run: mkdir -p zap-reports
 
-      - name: Run OWASP ZAP Baseline Scan
+      - name: Run DAST Scan with Docker Compose
         run: |
-          docker run --network host -v ${{ github.workspace }}/zap-reports:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
-            -t http://localhost:8000 \
-            -J /zap/wrk/zap-report.json \
-            -I || true
+          docker compose up --abort-on-container-exit
+          docker compose down
 
       - name: ZAP Quick Summary
         if: always()
@@ -96,6 +92,7 @@ jobs:
           else
             echo "No ZAP report found." >> $GITHUB_STEP_SUMMARY
           fi
+
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
         if: always()

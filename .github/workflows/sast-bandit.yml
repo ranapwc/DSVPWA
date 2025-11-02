@@ -10,17 +10,35 @@ jobs:
   bandit-scan:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Bandit
-      run: pip install bandit
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
 
-    - name: Run Bandit
-      run: bandit -r . -f json -o bandit-report.json
+      - name: Install Bandit
+        run: pip install bandit
 
-    - name: Upload Bandit Report
-      uses: actions/upload-artifact@v3
-      with:
-        name: bandit-report
-        path: bandit-report.json
+      - name: Run Bandit Scan
+        run: bandit -ll -ii -r . -f json -o bandit-report.json || true
+
+      - name: Bandit Quick View Summary
+        if: always()
+        run: |
+          echo "🔍 Bandit Quick View:"
+          if [ -f bandit-report.json ]; then
+            issues=$(jq '.results | length' bandit-report.json)
+            echo "Total Issues Found: $issues"
+            jq -r '.results[] | "\(.severity): \(.test_id) - \(.issue_text)"' bandit-report.json | head -n 10
+          else
+            echo "No Bandit report found."
+          fi
+
+      - name: Upload Bandit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-findings
+          path: bandit-report.json

@@ -36,18 +36,18 @@ jobs:
       #       echo "No Bandit report found."
       #     fi
 
-      - name: Display Bandit Results as Table in Summary
-        if: always()
-        run: |
-          echo "## 🛡️ Bandit SAST Scan Summary" >> $GITHUB_STEP_SUMMARY
-          if [ -f bandit-report.json ]; then
-            echo '| File | Line | Severity | Test ID | Issue Description |' >> $GITHUB_STEP_SUMMARY
-            echo '|------|------|----------|---------|--------------------|' >> $GITHUB_STEP_SUMMARY
-            jq -r '.results[] | 
-              "| \(.filename) | \(.line_number) | \(.issue_severity) | \(.test_id) | \(.issue_text) |"' bandit-report.json >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No Bandit report found." >> $GITHUB_STEP_SUMMARY
-          fi
+      # - name: Display Bandit Results as Table in Summary
+      #   if: always()
+      #   run: |
+      #     echo "## 🛡️ Bandit SAST Scan Summary" >> $GITHUB_STEP_SUMMARY
+      #     if [ -f bandit-report.json ]; then
+      #       echo '| File | Line | Severity | Test ID | Issue Description |' >> $GITHUB_STEP_SUMMARY
+      #       echo '|------|------|----------|---------|--------------------|' >> $GITHUB_STEP_SUMMARY
+      #       jq -r '.results[] | 
+      #         "| \(.filename) | \(.line_number) | \(.issue_severity) | \(.test_id) | \(.issue_text) |"' bandit-report.json >> $GITHUB_STEP_SUMMARY
+      #     else
+      #       echo "No Bandit report found." >> $GITHUB_STEP_SUMMARY
+      #     fi
 
 
       - name: Upload Bandit Report

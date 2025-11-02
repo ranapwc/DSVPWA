@@ -31,7 +31,7 @@ jobs:
           if [ -f bandit-report.json ]; then
             issues=$(jq '.results | length' bandit-report.json)
             echo "Total Issues Found: $issues"
-            jq -r '.results[] | "\(.severity): \(.test_id) - \(.issue_text)"' bandit-report.json | head -n 10
+            jq -r '.results[] | "\(.filename): \(.test_id) - \(.issue_text)"' bandit-report.json | head -n 10
           else
             echo "No Bandit report found."
           fi

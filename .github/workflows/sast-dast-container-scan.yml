@@ -127,7 +127,6 @@ jobs:
             zap-results/zap-report.xml
 
 
-
   image_scan:
     name: Build image & run Docker Scout
     runs-on: ubuntu-latest
@@ -139,13 +138,11 @@ jobs:
       - name: Build Docker image
         run: docker build -f Dockerfile -t dsvpwa:latest --progress=plain .
   
-      
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
   
       - name: Docker Scout Scan
         uses: docker/scout-action@v1
@@ -158,9 +155,38 @@ jobs:
           write-comment: true
           summary: true
   
-      - name: Upload Docker Scout Report
+      - name: Docker Scout Markdown Summary in Actions
+        if: always()
+        shell: bash
+        run: |
+          echo "## 🐳 Docker Scout Container Image Scan Summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ ! -f docker-scout-report.sarif ]; then
+            echo "No Docker Scout SARIF found." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          total=$(jq '[.runs[].results[]] | length' docker-scout-report.sarif 2>/dev/null || echo 0)
+          critical=$(jq '[.runs[].results[] | select(.properties.severity?=="critical" or .ruleId|test("(?i)critical"))] | length' docker-scout-report.sarif 2>/dev/null || echo 0)
+          high=$(jq '[.runs[].results[] | select(.properties.severity?=="high" or .ruleId|test("(?i)high"))] | length' docker-scout-report.sarif 2>/dev/null || echo 0)
+          medium=$(jq '[.runs[].results[] | select(.properties.severity?=="medium" or .ruleId|test("(?i)medium"))] | length' docker-scout-report.sarif 2>/dev/null || echo 0)
+          low=$(jq '[.runs[].results[] | select(.properties.severity?=="low" or .ruleId|test("(?i)low"))] | length' docker-scout-report.sarif 2>/dev/null || echo 0)
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Total Findings:** $total" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Severity | Count |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Critical | $critical |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| High     | $high     |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Medium   | $medium   |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Low      | $low      |" >> "$GITHUB_STEP_SUMMARY"
+  
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: docker-scout-report.sarif
+  
+      - name: Upload Docker Scout Report (artifact)
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: docker-scout-findings
-          path: docker-scout-report.sarif

@@ -1,0 +1,127 @@
+name: SAST, DAST and Image Scans
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]  
+  workflow_dispatch:
+
+
+jobs:
+  sast-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit Scan
+        run: bandit -ll -ii -r . -f json -o bandit-report.json || true
+      
+      # - name: Bandit Quick View Summary
+      #   if: always()
+      #   run: |
+      #     echo "🔍 Bandit Quick View:"
+      #     if [ -f bandit-report.json ]; then
+      #       issues=$(jq '.results | length' bandit-report.json)
+      #       echo "Total Issues Found: $issues"
+      #       jq -r '.results[] | "\(.filename): \(.test_id) - \(.issue_text)"' bandit-report.json | head -n 10
+      #     else
+      #       echo "No Bandit report found."
+      #     fi
+
+      - name: Display Bandit Results as Table in Summary
+        if: always()
+        run: |
+          echo "## 🛡️ Bandit SAST Scan Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f bandit-report.json ]; then
+            echo '| File | Line | Severity | Test ID | Issue Description |' >> $GITHUB_STEP_SUMMARY
+            echo '|------|------|----------|---------|--------------------|' >> $GITHUB_STEP_SUMMARY
+            jq -r '.results[] | 
+              "| \(.filename) | \(.line_number) | \(.issue_severity) | \(.test_id) | \(.issue_text) |"' bandit-report.json >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No Bandit report found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+
+      - name: Upload Bandit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-findings
+          path: bandit-report.json
+
+
+  dast_scan:
+    name: OWASP ZAP DAST Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and run DSVPWA container
+        run: |
+          docker build -t dsvpwa .
+          docker run -d -p 65413:65413 --name dsvpwa dsvpwa
+          sleep 15 # Wait for the app to start
+
+      - name: Prepare report directory
+        run: |
+          mkdir -p zap-results
+          chmod 777 zap-results
+
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
+          docker run --network host \
+            -v $(pwd)/zap-results:/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://localhost:65413 \
+            -J zap-report.json \
+            -x zap-report.xml \
+            -w zap-report.md \
+            -r zap-report.html \
+            -I || true
+
+      - name: ZAP Quick Summary
+        if: always()
+        run: |
+          echo "🔍 OWASP ZAP Summary:"
+          if [ -f zap-results/zap-report.json ]; then
+            alerts=$(jq '.site[0].alerts | length' zap-results/zap-report.json)
+            echo "Total Alerts Found: $alerts"
+            jq -r '.site[0].alerts[] | "\(.riskdesc): \(.alert)"' zap-results/zap-report.json | head -n 5
+          else
+            echo "No ZAP report found."
+          fi
+          
+      - name: ZAP Markdown Summary in Actions
+        if: always()
+        run: |
+          echo "## 🕷️ OWASP ZAP DAST Scan Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f zap-results/zap-report.json ]; then
+            echo '| Risk | Alert | URL | Description |' >> $GITHUB_STEP_SUMMARY
+            echo '|------|-------|-----|-------------|' >> $GITHUB_STEP_SUMMARY
+            jq -r '.site[0].alerts[] | "| " + .riskdesc + " | " + .alert + " | " + (.instances[0].uri // "N/A") + " | " + (.desc // "N/A") + " |"' zap-results/zap-report.json >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No ZAP report found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-report
+          path: |
+            zap-results/zap-report.json
+            zap-results/zap-report.html
+            zap-results/zap-report.md
+            zap-results/zap-report.xml

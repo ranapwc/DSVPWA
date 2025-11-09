@@ -185,8 +185,9 @@ jobs:
         with:
           sarif_file: docker-scout-report.sarif
   
-      - name: Upload Docker Scout Report (artifact)
+      - name: Upload Docker Scout Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: docker-scout-findings
+          path: docker-scout-report.sarif

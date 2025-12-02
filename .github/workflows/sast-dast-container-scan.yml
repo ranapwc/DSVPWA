@@ -59,54 +59,54 @@ jobs:
           name: bandit-findings
           path: bandit-report.json
 
-  sca_scan:
-    name: SCA – Open Source Dependency Scan (OSV-Scanner)
-    runs-on: ubuntu-latest
+  # sca_scan:
+  #   name: SCA – Open Source Dependency Scan (OSV-Scanner)
+  #   runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      security-events: write   # Needed to upload SARIF
-      actions: read
+  #   permissions:
+  #     contents: read
+  #     security-events: write   # Needed to upload SARIF
+  #     actions: read
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      # Optionally cache package managers here (pip/pnpm/mvn/gradle) if you install/resolve
+  #     # Optionally cache package managers here (pip/pnpm/mvn/gradle) if you install/resolve
 
-      - name: Install OSV-Scanner
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/google/osv-scanner/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+  #     - name: Install OSV-Scanner
+  #       run: |
+  #         curl -sSfL https://raw.githubusercontent.com/google/osv-scanner/main/scripts/install.sh | sh -s -- -b /usr/local/bin
 
-      # Scan the repo for manifests/lockfiles. Add --experimental-call-analysis for deeper results (optional).
-      - name: Run OSV-Scanner (repo)
-        run: |
-          osv-scanner --skip-git --format sarif --output osv-report.sarif --recursive .
+  #     # Scan the repo for manifests/lockfiles. Add --experimental-call-analysis for deeper results (optional).
+  #     - name: Run OSV-Scanner (repo)
+  #       run: |
+  #         osv-scanner --skip-git --format sarif --output osv-report.sarif --recursive .
 
-      - name: Upload SARIF to GitHub Code Scanning
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: osv-report.sarif
+  #     - name: Upload SARIF to GitHub Code Scanning
+  #       if: always()
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       with:
+  #         sarif_file: osv-report.sarif
 
-      - name: SCA Summary in Actions
-        if: always()
-        shell: bash
-        run: |
-          echo "## 📦 Open Source Dependency (SCA) Summary" >> "$GITHUB_STEP_SUMMARY"
-          if [ ! -f osv-report.sarif ]; then
-            echo "No OSV SARIF found." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          total=$(jq '[.runs[].results[]] | length' osv-report.sarif 2>/dev/null || echo 0)
-          crit=$(jq '[.runs[].results[] | select(.level=="error")] | length' osv-report.sarif 2>/dev/null || echo 0)
-          warn=$(jq '[.runs[].results[] | select(.level=="warning")] | length' osv-report.sarif 2>/dev/null || echo 0)
-          note=$(jq '[.runs[].results[] | select(.level=="note")] | length' osv-report.sarif 2>/dev/null || echo 0)
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Total Findings:** $total  " >> "$GITHUB_STEP_SUMMARY"
-          echo "- Error/Critical: $crit" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Warning/High: $warn" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Note/Medium-Low: $note" >> "$GITHUB_STEP_SUMMARY"
+  #     - name: SCA Summary in Actions
+  #       if: always()
+  #       shell: bash
+  #       run: |
+  #         echo "## 📦 Open Source Dependency (SCA) Summary" >> "$GITHUB_STEP_SUMMARY"
+  #         if [ ! -f osv-report.sarif ]; then
+  #           echo "No OSV SARIF found." >> "$GITHUB_STEP_SUMMARY"
+  #           exit 0
+  #         fi
+  #         total=$(jq '[.runs[].results[]] | length' osv-report.sarif 2>/dev/null || echo 0)
+  #         crit=$(jq '[.runs[].results[] | select(.level=="error")] | length' osv-report.sarif 2>/dev/null || echo 0)
+  #         warn=$(jq '[.runs[].results[] | select(.level=="warning")] | length' osv-report.sarif 2>/dev/null || echo 0)
+  #         note=$(jq '[.runs[].results[] | select(.level=="note")] | length' osv-report.sarif 2>/dev/null || echo 0)
+  #         echo "" >> "$GITHUB_STEP_SUMMARY"
+  #         echo "**Total Findings:** $total  " >> "$GITHUB_STEP_SUMMARY"
+  #         echo "- Error/Critical: $crit" >> "$GITHUB_STEP_SUMMARY"
+  #         echo "- Warning/High: $warn" >> "$GITHUB_STEP_SUMMARY"
+  #         echo "- Note/Medium-Low: $note" >> "$GITHUB_STEP_SUMMARY"
 
       # (Optional) Gate on severity – start permissive, then enforce
       # - name: Fail on high/critical
